@@ -1,9 +1,14 @@
 "use client";
 
-import { ConnectButton } from "@particle-network/connectkit";
+import {
+  ConnectButton,
+  useParticleAuth,
+  useWallets,
+} from "@particle-network/connectkit";
 import { Button } from "../../../components/ui/button";
 import { AccountsDialog } from "../AccountsDialog";
 import { AccountInfo } from "../../../lib/types";
+import { useEffect } from "react";
 
 interface ConnectSectionProps {
   isConnected: boolean;
@@ -30,6 +35,23 @@ export function ConnectSection({
   truncateAddress,
   disconnect,
 }: ConnectSectionProps) {
+  const { getUserInfo } = useParticleAuth();
+
+  // Retrieve the primary wallet from the Particle Wallets
+  const [primaryWallet] = useWallets();
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      // Use walletConnectorType as a condition to avoid account not initialized errors
+      if (primaryWallet?.connector?.walletConnectorType === "particleAuth") {
+        const userInfo = getUserInfo();
+        console.log("userInfo", userInfo);
+      }
+    };
+
+    fetchUserInfo();
+  }, [isConnected, getUserInfo, primaryWallet]);
+
   return (
     <div className="mb-3">
       {!isConnected ? (

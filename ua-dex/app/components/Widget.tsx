@@ -5,14 +5,9 @@ import {
   useWallets,
   useAccount,
 } from "@particle-network/connectkit";
-import {
-  UniversalAccount,
-} from "@particle-network/universal-account-sdk";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import {
-  UniversalAccountsWidgetProps,
-  AccountInfo,
-} from "../../lib/types";
+import { UniversalAccount } from "@particle-network/universal-account-sdk";
+import { useEffect, useState, useCallback } from "react";
+import { UniversalAccountsWidgetProps, AccountInfo } from "../../lib/types";
 
 // Import new components
 import { WidgetHeader } from "./widget/WidgetHeader";
@@ -22,7 +17,6 @@ import { LoadingIndicator } from "./widget/LoadingIndicator";
 import { truncateAddress } from "../../lib/utils";
 
 export function UniversalAccountsWidget({
-  projectId = process.env.NEXT_PUBLIC_UA_PROJECT_ID!,
   title = "Instant Swap",
   tokenAddress = "2nM6WQAUf4Jdmyd4kcSr8AURFoSDe9zsmRXJkFoKpump", // Will be used for token trading functionality
 }: UniversalAccountsWidgetProps) {
@@ -49,36 +43,30 @@ export function UniversalAccountsWidget({
     mint: "",
   });
   const [isTokenLoading, setIsTokenLoading] = useState(false);
-  const [universalAccount, setUniversalAccount] =
-    useState<UniversalAccount | null>(null);
-  // Fee estimation is now handled in BuyTabContent
+  const [ua, setUa] = useState<UniversalAccount | null>(null);
 
   useEffect(() => {
-    if (isConnected && projectId && address) {
-      const ua = new UniversalAccount({ projectId, ownerAddress: address });
-      setUniversalAccount(ua);
+    if (isConnected && address) {
+      const universalAccount = new UniversalAccount({
+        projectId: process.env.NEXT_PUBLIC_PROJECT_ID || "",
+        projectClientKey: process.env.NEXT_PUBLIC_CLIENT_KEY || "",
+        projectAppUuid: process.env.NEXT_PUBLIC_APP_ID || "",
+        ownerAddress: address,
+        tradeConfig: {
+          universalGas: true,
+        },
+      });
+      setUa(universalAccount);
     } else {
-      setUniversalAccount(null);
+      setUa(null);
     }
-  }, [isConnected, projectId, address]);
+  }, [isConnected, address]);
 
   // Handle transaction completion
   const handleTransactionComplete = () => {
     // Refresh balance or any other post-transaction actions
     fetchBalance(true);
   };
-
-  const ua = useMemo(() => {
-    if (!address) return null;
-
-    return new UniversalAccount({
-      projectId,
-      ownerAddress: address,
-      tradeConfig: {
-        universalGas: true,
-      },
-    });
-  }, [address, projectId]);
 
   useEffect(() => {
     const fetchSmartAccountOptions = async () => {
@@ -231,7 +219,7 @@ export function UniversalAccountsWidget({
             usdAmount={usdAmount}
             tokenAddress={tokenAddress}
             setUsdAmount={setUsdAmount}
-            universalAccount={universalAccount}
+            universalAccount={ua}
             walletClient={walletClient}
             address={address || null}
             accountInfo={accountInfo}

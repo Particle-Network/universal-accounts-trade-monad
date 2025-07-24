@@ -26,8 +26,7 @@ The main page in this app is a simple input bar where you manually add a contrac
 ## Prerequisites
 
 - Node.js 18+ and npm/yarn
-- Particle Network Project ID for Particle Connect(get one at [dashboard.particle.network](https://dashboard.particle.network))
-- Particle Network Project ID for Universal Accounts(Contact us to get one)
+- Particle Network Project credentials for Particle Connect and UA SDK(get one at [dashboard.particle.network](https://dashboard.particle.network))
 - Moralis API Key for token data (get one at [moralis.io](https://moralis.io))
 
 ## Installation
@@ -55,7 +54,6 @@ The Solana RPC is used to fetch the token balance.
     NEXT_PUBLIC_APP_ID=""
     NEXT_PUBLIC_SERVER_KEY=""
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=""
-    NEXT_PUBLIC_UA_PROJECT_ID=""
     MORALIS_API_KEY=""
     SOLANA_RPC_URL=""
    ```

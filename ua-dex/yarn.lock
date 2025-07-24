@@ -1203,10 +1203,10 @@
     buffer "^6.0.3"
     elliptic "^6.5.4"
 
-"@particle-network/universal-account-sdk@^1.0.0-alpha.1":
-  version "1.0.0-alpha.1"
-  resolved "https://registry.yarnpkg.com/@particle-network/universal-account-sdk/-/universal-account-sdk-1.0.0-alpha.1.tgz#4abd6b88395ac5d408dc4a000fd5986708d5c5e8"
-  integrity sha512-At5IfR1V+87qjTurgzWwpDzNjplGkpQ4RsBpvsA27LDAQKapfzLREl3TP+VvNnzHYzJDj73PXAdJ0k4mjCtlBw==
+"@particle-network/universal-account-sdk@^1.0.4":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@particle-network/universal-account-sdk/-/universal-account-sdk-1.0.4.tgz#af817faa32e6c1d8ca8ae5f7eab89e42084f34a1"
+  integrity sha512-PyhuoTJ30H06+5TB/dYsQQcDoY43KLXYIp+EVbL0lIlrLrNX9iXZm9yAB2RfDqfniLrCv8W/miYOOomrWWyx6g==
   dependencies:
     "@coral-xyz/anchor" "^0.30.1"
     "@noble/hashes" "^1.7.1"
