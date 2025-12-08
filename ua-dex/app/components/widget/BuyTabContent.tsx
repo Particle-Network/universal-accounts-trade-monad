@@ -5,10 +5,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { truncateAddress } from "../../../lib/utils";
 import { TransactionFeeEstimate } from "../../../lib/types";
-import {
-  UniversalAccount,
-  CHAIN_ID,
-} from "@particle-network/universal-account-sdk";
+import { UniversalAccount } from "@particle-network/universal-account-sdk";
 import { useState, useCallback, useEffect } from "react";
 import { WalletClient } from "viem";
 import { formatUnits } from "ethers";
@@ -37,9 +34,11 @@ export function BuyTabContent({
   // Local buying state - use external if provided, otherwise manage internally
   const [localIsBuying, setLocalIsBuying] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [feeEstimate, setFeeEstimate] = useState<TransactionFeeEstimate | null>(null);
+  const [feeEstimate, setFeeEstimate] = useState<TransactionFeeEstimate | null>(
+    null
+  );
   const [isEstimatingFee, setIsEstimatingFee] = useState(false);
-  
+
   const isBuying =
     externalIsBuying !== undefined ? externalIsBuying : localIsBuying;
 
@@ -55,7 +54,7 @@ export function BuyTabContent({
         setIsEstimatingFee(true);
         console.log("Estimating fees for amount:", amount);
         const transaction = await universalAccount.createBuyTransaction({
-          token: { chainId: CHAIN_ID.SOLANA_MAINNET, address: tokenAddress },
+          token: { chainId: 143, address: tokenAddress }, // Monad mainnet
           amountInUSD: amount,
         });
 
@@ -157,7 +156,7 @@ export function BuyTabContent({
     try {
       setLocalIsBuying(true);
       const transaction = await universalAccount.createBuyTransaction({
-        token: { chainId: CHAIN_ID.SOLANA_MAINNET, address: tokenAddress },
+        token: { chainId: 143, address: tokenAddress }, // Monad mainnet
         amountInUSD: amount,
       });
 
@@ -188,26 +187,48 @@ export function BuyTabContent({
     }
   };
   return (
-    <div>
-      <Label htmlFor="buy-amount" className="text-xs text-gray-400">
-        Amount (USD)
-      </Label>
-      <div className="flex flex-col gap-2">
+    <div className="space-y-4">
+      {/* Quick Amount Buttons */}
+      <div className="grid grid-cols-4 gap-2">
+        {[10, 25, 50, 100].map((amount) => (
+          <button
+            key={amount}
+            onClick={() => setUsdAmount(amount.toString())}
+            className="px-3 py-2 bg-slate-950/50 border border-slate-700 hover:border-green-600/50 hover:bg-green-600/10 text-slate-300 hover:text-green-400 rounded-lg transition-all text-sm font-semibold"
+          >
+            ${amount}
+          </button>
+        ))}
+      </div>
+
+      {/* Amount Input */}
+      <div className="space-y-2">
+        <Label
+          htmlFor="buy-amount"
+          className="text-sm text-slate-300 font-semibold uppercase tracking-wide"
+        >
+          Amount (USD)
+        </Label>
         <div className="flex items-center gap-2">
-          <Input
-            id="buy-amount"
-            type="number"
-            placeholder="0.00"
-            className="bg-gray-900 border-gray-800 text-white text-sm"
-            value={usdAmount}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setUsdAmount(e.target.value)
-            }
-          />
+          <div className="relative flex-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-bold">
+              $
+            </span>
+            <Input
+              id="buy-amount"
+              type="number"
+              placeholder="0.00"
+              className="bg-slate-950 border-slate-700 text-white text-lg pl-8 pr-4 py-6 focus:border-green-600 focus:ring-green-600/20"
+              value={usdAmount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setUsdAmount(e.target.value)
+              }
+            />
+          </div>
           <Button
             size="sm"
             variant="ghost"
-            className="h-9 w-9 p-0 text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors rounded-full flex items-center justify-center"
+            className="h-12 w-12 p-0 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors rounded-lg border border-slate-700"
             onClick={(e) => {
               e.preventDefault();
               setUsdAmount("");
@@ -217,91 +238,130 @@ export function BuyTabContent({
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4 w-4"
             >
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
             </svg>
           </Button>
         </div>
-        <Button
-          size="sm"
-          className="bg-purple-600 hover:bg-purple-700 text-white"
-          onClick={() => handleBuyToken(usdAmount)}
-          disabled={
-            isBuying ||
-            !usdAmount ||
-            isNaN(parseFloat(usdAmount)) ||
-            !universalAccount
-          }
-        >
-          {isBuying ? "Buying..." : "Buy"}
-        </Button>
       </div>
 
+      {/* Buy Button */}
+      <Button
+        size="lg"
+        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg py-6 shadow-lg shadow-green-600/20"
+        onClick={() => handleBuyToken(usdAmount)}
+        disabled={
+          isBuying ||
+          !usdAmount ||
+          isNaN(parseFloat(usdAmount)) ||
+          !universalAccount
+        }
+      >
+        {isBuying ? "Processing..." : "Buy Token"}
+      </Button>
+
       {tokenAddress && (
-        <div className="mt-2 text-xs text-gray-500">
+        <div className="text-xs text-slate-500 font-mono bg-slate-950/50 p-3 rounded-lg border border-slate-800">
           <p>Token: {truncateAddress(tokenAddress)}</p>
         </div>
       )}
 
       {/* Fee Estimate or Transaction Success Display */}
-      <div className="mt-3 text-xs">
+      <div className="mt-4">
         {transactionId ? (
-          <div className="bg-green-900/50 rounded p-2 border border-green-800">
-            <h4 className="text-green-300 font-semibold mb-1">
-              Transaction Submitted Successfully!
+          <div className="bg-green-950/30 rounded-lg p-4 border border-green-800/50">
+            <h4 className="text-green-400 font-bold mb-2 flex items-center gap-2">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Transaction Submitted!
             </h4>
-            <p className="text-green-200 mb-2">
+            <p className="text-green-300 text-sm mb-3">
               View your transaction on UniversalX:
             </p>
             <a
               href={`https://universalx.app/activity/details?id=${transactionId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-green-400 hover:text-green-300 underline break-all"
+              className="text-green-400 hover:text-green-300 underline text-sm break-all font-mono"
             >
-              https://universalx.app/activity/details?id/{transactionId}
+              {transactionId}
             </a>
           </div>
         ) : isEstimatingFee ? (
-          <p className="text-gray-400">Calculating fees...</p>
+          <div className="bg-slate-950/50 rounded-lg p-4 border border-slate-800">
+            <p className="text-slate-400 text-sm flex items-center gap-2">
+              <svg
+                className="animate-spin h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Calculating fees...
+            </p>
+          </div>
         ) : feeEstimate ? (
-          <div className="bg-gray-900 rounded p-2 border border-gray-800">
-            <h4 className="text-gray-300 font-semibold mb-1">
-              Estimated Fees:
+          <div className="bg-slate-950/50 rounded-lg p-4 border border-slate-800 space-y-2">
+            <h4 className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-3">
+              Estimated Fees
             </h4>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Gas:</span>
-              <span className="text-white">
-                ${feeEstimate.parsedFees?.gasFeeInUSD || "0.0000"} USD
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Service Fee:</span>
-              <span className="text-white">
-                ${feeEstimate.parsedFees?.serviceFeeInUSD || "0.0000"} USD
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">LP Fee:</span>
-              <span className="text-white">
-                ${feeEstimate.parsedFees?.lpFeeInUSD || "0.0000"} USD
-              </span>
-            </div>
-            <div className="flex justify-between mt-1 pt-1 border-t border-gray-700">
-              <span className="text-gray-300">Total Fee:</span>
-              <span className="text-white font-medium">
-                ${feeEstimate.parsedFees?.totalFeeInUSD || "0.0000"} USD
-              </span>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Gas Fee</span>
+                <span className="text-white font-mono">
+                  ${feeEstimate.parsedFees?.gasFeeInUSD || "0.0000"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Service Fee</span>
+                <span className="text-white font-mono">
+                  ${feeEstimate.parsedFees?.serviceFeeInUSD || "0.0000"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">LP Fee</span>
+                <span className="text-white font-mono">
+                  ${feeEstimate.parsedFees?.lpFeeInUSD || "0.0000"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-700">
+                <span className="text-slate-200 font-semibold">Total Fee</span>
+                <span className="text-white font-bold font-mono">
+                  ${feeEstimate.parsedFees?.totalFeeInUSD || "0.0000"}
+                </span>
+              </div>
             </div>
           </div>
         ) : null}

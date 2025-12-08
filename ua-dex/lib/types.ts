@@ -2,8 +2,19 @@ export interface UniversalAccountsWidgetProps {
   projectId?: string;
   title?: string;
   tokenAddress?: string;
+  tokenData?: TokenData; // Pre-fetched token data from trending list
 }
-  
+
+// Token data passed from trending list to avoid redundant API calls
+export interface TokenData {
+  address: string;
+  name: string;
+  symbol: string;
+  logo: string | null;
+  price: number;
+  priceChange24h: number;
+}
+
 export interface AccountInfo {
   evmUaAddress: string;
   solanaUaAddress: string;

@@ -14,11 +14,13 @@ import { WidgetHeader } from "./widget/WidgetHeader";
 import { ConnectSection } from "./widget/ConnectSection";
 import { TradingInterface } from "./widget/TradingInterface";
 import { LoadingIndicator } from "./widget/LoadingIndicator";
+import { AssetsDialog } from "./widget/AssetsDialog";
 import { truncateAddress } from "../../lib/utils";
 
 export function UniversalAccountsWidget({
   title = "Instant Swap",
-  tokenAddress = "2nM6WQAUf4Jdmyd4kcSr8AURFoSDe9zsmRXJkFoKpump", // Will be used for token trading functionality
+  tokenAddress = "",
+  tokenData,
 }: UniversalAccountsWidgetProps) {
   // Get wallet from Particle Connect
   const [primaryWallet] = useWallets();
@@ -33,6 +35,17 @@ export function UniversalAccountsWidget({
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [assetsDialogOpen, setAssetsDialogOpen] = useState(false);
+  const [assets, setAssets] = useState<
+    Array<{
+      tokenType: string;
+      amount: number;
+      amountInUSD: number;
+      chain?: string;
+      symbol?: string;
+      image?: string;
+    }>
+  >([]);
   const [activeTab, setActiveTab] = useState("buy");
   const [usdAmount, setUsdAmount] = useState("");
   const [tokenInfo, setTokenInfo] = useState({
@@ -93,6 +106,7 @@ export function UniversalAccountsWidget({
     async (isManualRefresh = false) => {
       if (!ua) {
         setTotalBalanceUSD(null);
+        setAssets([]);
         return;
       }
 
@@ -103,11 +117,24 @@ export function UniversalAccountsWidget({
           setBalanceLoading(true);
         }
 
-        const { totalAmountInUSD } = await ua.getPrimaryAssets();
-        setTotalBalanceUSD(totalAmountInUSD);
+        const primaryAssets = await ua.getPrimaryAssets();
+        setTotalBalanceUSD(primaryAssets.totalAmountInUSD);
+
+        // Store full assets breakdown
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formattedAssets = primaryAssets.assets.map((asset: any) => ({
+          tokenType: asset.tokenType,
+          amount: asset.amount,
+          amountInUSD: asset.amountInUSD,
+          chain: asset.chain,
+          symbol: asset.symbol,
+          image: asset.image,
+        }));
+        setAssets(formattedAssets);
       } catch (error) {
         console.error("Error fetching assets balance:", error);
         setTotalBalanceUSD(null);
+        setAssets([]);
       } finally {
         setBalanceLoading(false);
         setIsRefreshing(false);
@@ -131,8 +158,8 @@ export function UniversalAccountsWidget({
     try {
       // Fetch metadata and price in parallel
       const [metadataResponse, priceResponse] = await Promise.all([
-        fetch(`/api/token/metadata?mint=${tokenAddress}`),
-        fetch(`/api/token/price?mint=${tokenAddress}`),
+        fetch(`/api/token/metadata?address=${tokenAddress}`),
+        fetch(`/api/token/price?address=${tokenAddress}`),
       ]);
 
       if (!metadataResponse.ok) {
@@ -148,6 +175,27 @@ export function UniversalAccountsWidget({
       if (priceResponse.ok) {
         const priceData = await priceResponse.json();
         price = priceData.usdPrice || 0;
+
+        // If price is 0, try to get it from price history as fallback
+        if (price === 0) {
+          console.log("Price is 0, fetching from price history...");
+          try {
+            const historyResponse = await fetch(
+              `/api/token/price-history?address=${tokenAddress}`
+            );
+            if (historyResponse.ok) {
+              const historyData = await historyResponse.json();
+              // Get the latest close price
+              if (historyData && historyData.length > 0) {
+                const latestCandle = historyData[historyData.length - 1];
+                price = parseFloat(latestCandle.close) || 0;
+                console.log("Using price from history:", price);
+              }
+            }
+          } catch (historyError) {
+            console.warn("Failed to fetch price from history:", historyError);
+          }
+        }
       } else {
         console.warn(`Error fetching token price: ${priceResponse.statusText}`);
       }
@@ -157,7 +205,7 @@ export function UniversalAccountsWidget({
         symbol: metadataData.symbol || "???",
         price: price,
         logo: metadataData.logo || "",
-        mint: metadataData.mint || "",
+        mint: tokenAddress, // Store the address for compatibility
       });
     } catch (error) {
       console.error("Failed to fetch token data:", error);
@@ -166,10 +214,23 @@ export function UniversalAccountsWidget({
     }
   }, [tokenAddress]);
 
-  // Fetch token metadata when component mounts
+  // Use tokenData prop if available, otherwise fetch from API
   useEffect(() => {
-    fetchTokenMetadata();
-  }, [fetchTokenMetadata]);
+    if (tokenData) {
+      // Use pre-fetched data from trending list
+      setTokenInfo({
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        price: tokenData.price,
+        logo: tokenData.logo || "",
+        mint: tokenData.address,
+      });
+      setIsTokenLoading(false);
+    } else if (tokenAddress) {
+      // Fallback: fetch from API if no tokenData provided
+      fetchTokenMetadata();
+    }
+  }, [tokenData, tokenAddress, fetchTokenMetadata]);
 
   // Copy address to clipboard function
   const copyToClipboard = async (text: string) => {
@@ -184,7 +245,7 @@ export function UniversalAccountsWidget({
 
   return (
     <div className="universal-widget">
-      <div className="bg-black border border-gray-800 rounded-xl p-3 text-white shadow-2xl w-full max-w-xs">
+      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 text-white shadow-2xl w-full backdrop-blur-sm">
         {/* Header and Balance */}
         <WidgetHeader
           title={title}
@@ -193,6 +254,16 @@ export function UniversalAccountsWidget({
           isRefreshing={isRefreshing}
           totalBalanceUSD={totalBalanceUSD}
           fetchBalance={fetchBalance}
+          onBalanceClick={() => setAssetsDialogOpen(true)}
+        />
+
+        {/* Assets Dialog */}
+        <AssetsDialog
+          open={assetsDialogOpen}
+          onOpenChange={setAssetsDialogOpen}
+          assets={assets}
+          totalAmountInUSD={totalBalanceUSD || 0}
+          isLoading={balanceLoading}
         />
 
         {/* Connect/Disconnect Section */}
@@ -209,22 +280,24 @@ export function UniversalAccountsWidget({
           disconnect={disconnect}
         />
 
-        {/* Trading Interface */}
+        {/* Trading Interface - Grid Layout for Terminal Look */}
         {isConnected && !loading && (
-          <TradingInterface
-            tokenInfo={tokenInfo}
-            isTokenLoading={isTokenLoading}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            usdAmount={usdAmount}
-            tokenAddress={tokenAddress}
-            setUsdAmount={setUsdAmount}
-            universalAccount={ua}
-            walletClient={walletClient}
-            address={address || null}
-            accountInfo={accountInfo}
-            onTransactionComplete={handleTransactionComplete}
-          />
+          <div className="mt-6">
+            <TradingInterface
+              tokenInfo={tokenInfo}
+              isTokenLoading={isTokenLoading}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              usdAmount={usdAmount}
+              tokenAddress={tokenAddress}
+              setUsdAmount={setUsdAmount}
+              universalAccount={ua}
+              walletClient={walletClient}
+              address={address || null}
+              accountInfo={accountInfo}
+              onTransactionComplete={handleTransactionComplete}
+            />
+          </div>
         )}
 
         {/* Loading Indicator */}
