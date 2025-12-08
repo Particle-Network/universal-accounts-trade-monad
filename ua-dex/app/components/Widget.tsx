@@ -58,6 +58,12 @@ export function UniversalAccountsWidget({
   const [isTokenLoading, setIsTokenLoading] = useState(false);
   const [ua, setUa] = useState<UniversalAccount | null>(null);
 
+  //declare enum MEV_PROTECTION_TYPE {
+  // MEV_PROTECTION_OFF = 0,
+  //MEV_PROTECTION_REDUCE = 1,
+  //MEV_PROTECTION_SECURITY = 2
+  //}
+
   useEffect(() => {
     if (isConnected && address) {
       const universalAccount = new UniversalAccount({
@@ -67,6 +73,7 @@ export function UniversalAccountsWidget({
         ownerAddress: address,
         tradeConfig: {
           universalGas: true,
+          mevProtection: 2,
         },
       });
       setUa(universalAccount);
