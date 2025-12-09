@@ -53,26 +53,28 @@ export function TradingInterface({
   accountInfo,
 }: TradingInterfaceProps) {
   return (
-    <div className="mt-4">
+    <div>
       <TokenInfoCard tokenInfo={tokenInfo} isTokenLoading={isTokenLoading} />
 
-      <Tabs
-        defaultValue="buy"
-        value={activeTab}
-        onValueChange={setActiveTab}
-      >
-        <TabsList className="grid w-full grid-cols-2 bg-gray-900">
-          <TabsTrigger value="buy" className="text-xs">
+      <Tabs defaultValue="buy" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 bg-slate-950/50 border border-slate-800 p-1">
+          <TabsTrigger
+            value="buy"
+            className="text-sm font-semibold data-[state=active]:bg-green-600/20 data-[state=active]:text-green-400 data-[state=active]:border data-[state=active]:border-green-600/50"
+          >
             Buy
           </TabsTrigger>
-          <TabsTrigger value="sell" className="text-xs">
+          <TabsTrigger
+            value="sell"
+            className="text-sm font-semibold data-[state=active]:bg-red-600/20 data-[state=active]:text-red-400 data-[state=active]:border data-[state=active]:border-red-600/50"
+          >
             Sell
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="buy" className="space-y-3 mt-3">
+        <TabsContent value="buy" className="space-y-4 mt-4">
           {walletClient && (
-            <BuyTabContent 
+            <BuyTabContent
               usdAmount={usdAmount}
               tokenAddress={tokenAddress}
               setUsdAmount={setUsdAmount}
@@ -84,14 +86,14 @@ export function TradingInterface({
             />
           )}
           {!walletClient && (
-            <div className="p-4 text-center text-gray-400">
+            <div className="p-4 text-center text-slate-400 bg-slate-950/50 rounded-lg border border-slate-800">
               Wallet client not available. Please reconnect your wallet.
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="sell" className="space-y-3 mt-3">
-          <SellTabContent 
+        <TabsContent value="sell" className="space-y-4 mt-4">
+          <SellTabContent
             tokenAddress={tokenAddress}
             universalAccount={universalAccount}
             walletClient={walletClient}

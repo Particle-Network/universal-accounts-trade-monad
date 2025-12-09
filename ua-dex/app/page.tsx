@@ -1,67 +1,58 @@
 "use client";
 
 import UniversalAccountsWidget from "./components/Widget";
+import TrendingTokens from "./components/TrendingTokens";
 import { useState } from "react";
+import { TokenData } from "../lib/types";
 
 export default function Home() {
-  const [tokenAddress, setTokenAddress] = useState(
-    "2nM6WQAUf4Jdmyd4kcSr8AURFoSDe9zsmRXJkFoKpump"
-  );
-  const [inputValue, setInputValue] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      setTokenAddress(inputValue.trim());
-    }
-  };
+  const [selectedToken, setSelectedToken] = useState<TokenData | null>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
-      <div className="max-w-lg mx-auto pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+      <div className="max-w-6xl mx-auto pt-8">
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">
-            Instant Swap Widget
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+            Monad Trading Terminal
           </h1>
+          <p className="text-slate-400 text-sm">
+            Powered by Particle Universal Accounts
+          </p>
         </div>
 
-        {/* Contract Address Input */}
-        <div className="mb-6 bg-gray-800 rounded-lg p-4">
-          <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
-            <label
-              htmlFor="contract-address"
-              className="text-white text-sm font-medium"
-            >
-              Token Contract Address
-            </label>
-            <div className="flex">
-              <input
-                id="contract-address"
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Enter token contract address"
-                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-l-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Trending Tokens */}
+          <div>
+            <TrendingTokens
+              onSelectToken={setSelectedToken}
+              selectedToken={selectedToken?.address || null}
+            />
+          </div>
+
+          {/* Right: Trading Widget */}
+          <div>
+            {selectedToken ? (
+              <UniversalAccountsWidget
+                projectId={process.env.NEXT_PUBLIC_UA_PROJECT_ID}
+                title="Universal Swap"
+                tokenAddress={selectedToken.address}
+                tokenData={selectedToken}
               />
-              <button
-                type="submit"
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-r-md transition duration-200"
-              >
-                Update
-              </button>
-            </div>
-            <p className="text-xs text-gray-400">
-              Current token: {tokenAddress.substring(0, 6)}...
-              {tokenAddress.substring(tokenAddress.length - 4)}
-            </p>
-          </form>
+            ) : (
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 backdrop-blur-sm text-center">
+                <div className="text-6xl mb-4">👈</div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  Select a Token
+                </h3>
+                <p className="text-slate-400 text-sm">
+                  Choose a trending token from the list to start trading
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-
-        <UniversalAccountsWidget
-          projectId={process.env.NEXT_PUBLIC_UA_PROJECT_ID}
-          title="Universal Swap"
-          tokenAddress={tokenAddress}
-        />
       </div>
     </div>
   );

@@ -12,24 +12,24 @@ export async function GET(request: NextRequest) {
   try {
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
-    const mint = searchParams.get("mint");
+    const address = searchParams.get("address");
 
-    if (!mint) {
+    if (!address) {
       return NextResponse.json(
-        { error: "Token mint address is required" },
+        { error: "Token address is required" },
         { status: 400 }
       );
     }
-    
+
     // Check cache first
-    const cacheKey = `price_${mint}`;
+    const cacheKey = `price_${address}`;
     const cachedData = cache[cacheKey];
     const now = Date.now();
-    
+
     if (cachedData && now - cachedData.timestamp < CACHE_EXPIRY) {
       return NextResponse.json({ usdPrice: cachedData.price });
     }
-    
+
     // Get API key from environment variables
     const apiKey = process.env.MORALIS_API_KEY;
     if (!apiKey) {
@@ -39,39 +39,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch price data from Moralis API
-    const url = `https://solana-gateway.moralis.io/token/mainnet/${mint}/price`;
+    // Fetch price data from Moralis EVM API for Monad
+    const url = `https://deep-index.moralis.io/api/v2.2/erc20/${address}/price?chain=0x8f`;
     const response = await fetch(url, {
       headers: {
-        "accept": "application/json",
-        "X-API-Key": apiKey
-      }
+        accept: "application/json",
+        "X-API-Key": apiKey,
+      },
     });
 
+    console.log("Price API response status:", response.status);
+
     if (!response.ok) {
-      return NextResponse.json(
-        { error: `Error fetching token price: ${response.statusText}` },
-        { status: response.status }
-      );
+      // If Moralis doesn't have price data, return 0 instead of error
+      console.warn(`Price data not available: ${response.statusText}`);
+      return NextResponse.json({ usdPrice: 0 });
     }
 
     const data = await response.json();
-    
+    console.log("Price API response:", data);
+
     // Extract just the USD price
-    const usdPrice = data.usdPrice;
-    
+    const usdPrice = data.usdPrice || data.usdPriceFormatted || 0;
+
     // Store in cache
     cache[cacheKey] = {
       price: usdPrice,
-      timestamp: now
+      timestamp: now,
     };
 
     return NextResponse.json({ usdPrice });
   } catch (error) {
     console.error("Token price API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch token price" },
-      { status: 500 }
-    );
+    // Return 0 price instead of error for better UX
+    return NextResponse.json({ usdPrice: 0 });
   }
 }

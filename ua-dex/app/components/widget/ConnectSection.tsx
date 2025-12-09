@@ -53,7 +53,7 @@ export function ConnectSection({
   }, [isConnected, getUserInfo, primaryWallet]);
 
   return (
-    <div className="mb-3">
+    <div className="mb-6">
       {!isConnected ? (
         <div className="w-full">
           <ConnectButton />
@@ -74,7 +74,7 @@ export function ConnectSection({
             onClick={() => disconnect()}
             variant="destructive"
             size="sm"
-            className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1.5 px-2 h-auto"
+            className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold px-4 py-2 shadow-lg shadow-red-600/20"
           >
             Disconnect
           </Button>

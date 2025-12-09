@@ -1,137 +1,102 @@
 import { NextResponse } from "next/server";
 
-interface TokenData {
-  associatedTokenAddress: string;
-  mint: string;
-  amountRaw: string;
-  amount: string;
-  decimals: number;
+interface TokenBalance {
+  token_address: string;
   name: string;
   symbol: string;
-  logo: string;
+  logo?: string;
+  thumbnail?: string;
+  decimals: string;
+  balance: string;
+  possible_spam: boolean;
 }
-
-// Token metadata cache to avoid repeated lookups
-const tokenMetadataCache = new Map<string, { name: string; symbol: string; logo: string; decimals: number }>();
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const address = searchParams.get("address");
-  const mint = searchParams.get("mint");
+  const walletAddress = searchParams.get("address");
+  const tokenAddress = searchParams.get("token");
 
-  if (!address) {
+  if (!walletAddress) {
     return NextResponse.json(
-      { error: "Address parameter is required" },
+      { error: "Wallet address parameter is required" },
       { status: 400 }
     );
   }
 
   try {
-    // Define the RPC endpoint - prefer environment variable or fallback to public endpoint
-    const rpcEndpoint = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-    
-    // Construct the RPC request
-    const rpcRequest = {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getTokenAccountsByOwner",
-      params: [
-        address,
-        // If mint is specified, filter by mint, otherwise get all tokens
-        mint ? { mint } : { programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" },
-        { encoding: "jsonParsed" }
-      ]
-    };
+    const apiKey = process.env.MORALIS_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "API key not configured" },
+        { status: 500 }
+      );
+    }
 
-    const response = await fetch(rpcEndpoint, {
-      method: "POST",
+    // Build the URL for Monad EVM token balances
+    let url = `https://deep-index.moralis.io/api/v2.2/${walletAddress}/erc20?chain=0x8f`;
+
+    // If a specific token is requested, add it to the query
+    if (tokenAddress) {
+      url += `&token_addresses=${tokenAddress}`;
+    }
+
+    const response = await fetch(url, {
       headers: {
-        "Content-Type": "application/json"
+        accept: "application/json",
+        "X-API-Key": apiKey,
       },
-      body: JSON.stringify(rpcRequest)
     });
 
     if (!response.ok) {
-      throw new Error(`RPC error! status: ${response.status}`);
+      throw new Error(`Moralis API error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    const data = await response.json();
+    console.log("Balance API response:", data);
 
-    if (result.error) {
-      throw new Error(`Solana RPC error: ${result.error.message}`);
-    }
+    // If a specific token was requested
+    if (tokenAddress && data.length > 0) {
+      const token = data[0] as TokenBalance;
 
-    interface SolanaTokenAccount {
-      pubkey: string;
-      account: {
-        data: {
-          parsed: {
-            info: {
-              mint: string;
-              tokenAmount: {
-                amount: string;
-                decimals: number;
-                uiAmountString: string;
-              };
-            };
-          };
-        };
-      };
-    }
+      // Calculate the formatted amount
+      const decimals = parseInt(token.decimals);
+      const rawBalance = BigInt(token.balance);
+      const divisor = BigInt(10 ** decimals);
+      const formattedBalance = (
+        Number(rawBalance) / Number(divisor)
+      ).toString();
 
-    // Process the RPC response
-    const tokens = await Promise.all(result.result.value.map(async (account: SolanaTokenAccount) => {
-      const data = account.account.data.parsed.info;
-      const mintAddress = data.mint;
-      const tokenAmount = data.tokenAmount;
-      
-      // Get or fetch token metadata
-      let tokenMetadata = tokenMetadataCache.get(mintAddress);
-      if (!tokenMetadata) {
-        // For a production app, you'd want to implement proper token metadata lookup here
-        // For now, we'll use placeholder metadata
-        tokenMetadata = {
-          name: `Token ${mintAddress.slice(0, 6)}`,
-          symbol: `TKN-${mintAddress.slice(0, 3)}`,
-          logo: "",
-          decimals: tokenAmount.decimals
-        };
-        tokenMetadataCache.set(mintAddress, tokenMetadata);
-      }
-
-      return {
-        associatedTokenAddress: account.pubkey,
-        mint: mintAddress,
-        amountRaw: tokenAmount.amount,
-        amount: tokenAmount.uiAmountString,
-        decimals: tokenAmount.decimals,
-        name: tokenMetadata.name,
-        symbol: tokenMetadata.symbol,
-        logo: tokenMetadata.logo
-      } as TokenData;
-    }));
-
-    // If a specific mint was requested
-    if (mint) {
-      if (tokens.length === 0) {
-        return NextResponse.json(
-          { error: "Token not found for this address" },
-          { status: 404 }
-        );
-      }
-      const token = tokens[0];
       return NextResponse.json({
-        amount: token.amount,
-        amountRaw: token.amountRaw,
-        decimals: token.decimals,
+        amount: formattedBalance,
+        amountRaw: token.balance,
+        decimals: decimals,
         symbol: token.symbol,
         name: token.name,
-        logo: token.logo,
+        logo: token.logo || token.thumbnail || "",
       });
     }
 
     // Otherwise return all tokens
-    return NextResponse.json(tokens);
+    const formattedTokens = data.map((token: TokenBalance) => {
+      const decimals = parseInt(token.decimals);
+      const rawBalance = BigInt(token.balance);
+      const divisor = BigInt(10 ** decimals);
+      const formattedBalance = (
+        Number(rawBalance) / Number(divisor)
+      ).toString();
+
+      return {
+        tokenAddress: token.token_address,
+        name: token.name,
+        symbol: token.symbol,
+        logo: token.logo || token.thumbnail || "",
+        decimals: decimals,
+        amount: formattedBalance,
+        amountRaw: token.balance,
+      };
+    });
+
+    return NextResponse.json(formattedTokens);
   } catch (error) {
     console.error("Error fetching token balance:", error);
     return NextResponse.json(

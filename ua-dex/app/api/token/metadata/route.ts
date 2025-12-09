@@ -1,29 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Define the token metadata interface
+// Define the token metadata interface for EVM tokens
 interface TokenMetadata {
-  mint: string;
-  standard: string;
+  address: string;
   name: string;
   symbol: string;
-  logo?: string;
   decimals: string;
-  metaplex?: {
-    metadataUri: string;
-    masterEdition: boolean;
-    isMutable: boolean;
-    sellerFeeBasisPoints: number;
-    updateAuthority: string;
-    primarySaleHappened: number;
-  };
-  fullyDilutedValue?: string;
-  totalSupply?: string;
-  totalSupplyFormatted?: string;
-  links?: Record<string, string> | null;
-  description?: string | null;
-  // Additional fields we add
-  price?: number;
-  priceChange?: number;
+  logo?: string;
+  thumbnail?: string;
 }
 
 // Simple in-memory cache to avoid redundant API calls
@@ -38,24 +22,24 @@ export async function GET(request: NextRequest) {
   try {
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
-    const mint = searchParams.get("mint");
+    const address = searchParams.get("address");
 
-    if (!mint) {
+    if (!address) {
       return NextResponse.json(
-        { error: "Token mint address is required" },
+        { error: "Token address is required" },
         { status: 400 }
       );
     }
-    
+
     // Check cache first
-    const cacheKey = `metadata_${mint}`;
+    const cacheKey = `metadata_${address}`;
     const cachedData = cache[cacheKey];
     const now = Date.now();
-    
+
     if (cachedData && now - cachedData.timestamp < CACHE_EXPIRY) {
       return NextResponse.json(cachedData.data);
     }
-    
+
     // Get API key from environment variables
     const apiKey = process.env.MORALIS_API_KEY;
     if (!apiKey) {
@@ -65,15 +49,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch data from Moralis API
-    const url = `https://solana-gateway.moralis.io/token/mainnet/${mint}/metadata`;
+    // Fetch data from Moralis EVM API for Monad
+    const url = `https://deep-index.moralis.io/api/v2.2/erc20/metadata?chain=0x8f&addresses=${address}`;
     const response = await fetch(url, {
       headers: {
-        "accept": "application/json",
-        "X-API-Key": apiKey
-      }
+        accept: "application/json",
+        "X-API-Key": apiKey,
+      },
     });
-console.log(response);
+
+    console.log("Metadata API response status:", response.status);
+
     if (!response.ok) {
       return NextResponse.json(
         { error: `Error fetching token metadata: ${response.statusText}` },
@@ -82,21 +68,40 @@ console.log(response);
     }
 
     const data = await response.json();
-    
-    // Enhance the response with mock price data (to be replaced with real API later)
-    const enhancedData = {
-      ...data,
-      price: 2.34,
-      priceChange: 3.45
+    console.log("Metadata API response:", data);
+
+    // Moralis returns an array of token metadata
+    const tokenData = data[0];
+
+    if (!tokenData) {
+      return NextResponse.json({ error: "Token not found" }, { status: 404 });
+    }
+
+    // Generate a fallback logo if none provided
+    let logoUrl = tokenData.logo || tokenData.thumbnail || "";
+
+    // If no logo from Moralis, generate a deterministic avatar based on address
+    if (!logoUrl) {
+      // Use DiceBear API to generate a unique avatar for this token
+      logoUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`;
+    }
+
+    // Format the response to match our expected structure
+    const formattedData: TokenMetadata = {
+      address: tokenData.address,
+      name: tokenData.name || "Unknown Token",
+      symbol: tokenData.symbol || "???",
+      decimals: tokenData.decimals?.toString() || "18",
+      logo: logoUrl,
     };
 
     // Store in cache
     cache[cacheKey] = {
-      data: enhancedData,
-      timestamp: now
+      data: formattedData,
+      timestamp: now,
     };
 
-    return NextResponse.json(enhancedData);
+    return NextResponse.json(formattedData);
   } catch (error) {
     console.error("Token metadata API error:", error);
     return NextResponse.json(

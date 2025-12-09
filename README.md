@@ -1,192 +1,156 @@
-# Instant Swap Widget
+# Monad Trading Terminal - Universal Accounts Demo
 
-A modern, user-friendly instant swap widget powered by Particle Network's Universal Accounts. This application demonstrates how to build a cross-chain trading interface with a simplified user experience using chain abstraction.
+A developer demo showcasing how to integrate **Particle Network's Universal Accounts SDK** to build cross-chain trading functionality. This app demonstrates chain abstraction, where users can trade tokens on Monad using a unified balance from any supported chain.
 
-This widget is meant to be used as a component in a larger application, and it provides a simple way to add instant swap functionality to your app. 
+## What You'll Learn
 
-The main page in this app is a simple input bar where you manually add a contract address, the widget will fetch the token data and allow the user to instantly trade, the idea is to place it within a token's info page, so you can use the token address as a prop.
+This demo teaches you how to:
 
-> 🎥 Find a quick video overview in this [Tweet](https://x.com/web3Dav3/status/1930376411816030307).
+1. **Initialize the Universal Account SDK** - Connect to Particle Network's infrastructure
+2. **Fetch unified balances** - Get aggregated balance across all supported chains
+3. **Execute buy/sell transactions** - Trade tokens with chain abstraction
+4. **Preview transaction fees** - Estimate costs before executing trades
 
-## Features
+## Project Structure
 
-- **Universal Account Integration**: Wallet connection via Particle Connect and transaction handling through Universal Accounts
-- **Token Trading Interface**: Clean, intuitive UI for trading tokens
-- **Real-time Price Data**: Live token price fetching via Moralis API
-- **Transaction Fee Estimation**: Preview gas costs before confirming trades
-- **Responsive Design**: Works on desktop and mobile devices
+```
+ua-dex/
+├── app/
+│   ├── components/
+│   │   ├── Widget.tsx              # Main UA widget - SDK initialization & balance fetching
+│   │   ├── TrendingTokens.tsx      # Token list component
+│   │   └── widget/
+│   │       ├── BuyTabContent.tsx   # Buy transaction logic
+│   │       ├── SellTabContent.tsx  # Sell transaction logic
+│   │       └── AssetsDialog.tsx    # Assets breakdown display
+│   ├── api/token/                  # Backend API routes (Moralis integration)
+│   │   ├── trending/route.ts       # Fetch trending tokens
+│   │   ├── metadata/route.ts       # Token metadata
+│   │   └── price/route.ts          # Token prices
+│   └── page.tsx                    # Main page layout
+├── lib/
+│   ├── types.ts                    # TypeScript interfaces
+│   └── utils.ts                    # Helper functions
+└── components/ui/                  # Shadcn UI components
+```
 
-## Current Limitations
+## Key SDK Concepts
 
-- **Solana-Only Buy/Sell Support**: Currently only supports buy/sell Solana tokens due to:
-  - Token data API integration specifically for Solana (via Moralis)
-  - Universal Account configuration targeting Solana mainnet
-  - The user can still trade using the fully universal balance from any supported chain.
+### 1. Initialize Universal Account
 
-## Prerequisites
+```typescript
+// app/components/Widget.tsx
+import { UniversalAccount } from "@particle-network/universal-account-sdk";
 
-- Node.js 18+ and npm/yarn
-- Particle Network Project credentials for Particle Connect and UA SDK(get one at [dashboard.particle.network](https://dashboard.particle.network))
-- Moralis API Key for token data (get one at [moralis.io](https://moralis.io))
+const universalAccount = new UniversalAccount({
+  projectId: process.env.NEXT_PUBLIC_PROJECT_ID,
+  projectClientKey: process.env.NEXT_PUBLIC_CLIENT_KEY,
+  projectAppUuid: process.env.NEXT_PUBLIC_APP_ID,
+  ownerAddress: address, // Connected wallet address
+});
+```
 
-## Installation
+### 2. Fetch Unified Balance
 
-1. Clone the repository
-   ```bash
-   git clone https://github.com/soos3d/instant-trade-widget.git
-   cd ua-dex
-   ```
+```typescript
+// Get total balance across all chains
+const { totalAmountInUSD, assets } = await universalAccount.getPrimaryAssets();
 
-2. Install dependencies
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. Create a `.env.local` file with your API keys
-
-The Solana RPC is used to fetch the token balance.
-
-   ```
-    NEXT_PUBLIC_PROJECT_ID=""
-    NEXT_PUBLIC_CLIENT_KEY=""
-    NEXT_PUBLIC_APP_ID=""
-    NEXT_PUBLIC_SERVER_KEY=""
-    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=""
-    MORALIS_API_KEY=""
-    SOLANA_RPC_URL=""
-   ```
-
-4. Start the development server
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## How to Use the Widget
-
-The widget is designed to be easily integrated into any React application. In the demo app, it's used in the main page (`app/page.tsx`) as follows:
-
-```tsx
-// Import the widget component
-import UniversalAccountsWidget from "./components/Widget";
-
-export default function Home() {
-  const [tokenAddress, setTokenAddress] = useState(
-    "2nM6WQAUf4Jdmyd4kcSr8AURFoSDe9zsmRXJkFoKpump" // Default token address
-  );
-  
-  // Form handling for token address input
-  const [inputValue, setInputValue] = useState("");
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      setTokenAddress(inputValue.trim());
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
-      <div className="max-w-lg mx-auto pt-20">
-        {/* Page header and token input form */}
-        
-        {/* The widget component */}
-        <UniversalAccountsWidget
-          projectId={process.env.NEXT_PUBLIC_UA_PROJECT_ID}
-          title="Universal Swap"
-          tokenAddress={tokenAddress}
-        />
-      </div>
-    </div>
-  );
+// assets contains breakdown by chain/token
+for (const asset of assets) {
+  console.log(`${asset.tokenType}: $${asset.amountInUSD}`);
 }
 ```
 
-The widget accepts the following props:
-- `projectId`: Your Particle Network Universal Accounts project ID
-- `title`: The title displayed at the top of the widget
-- `tokenAddress`: The address of the token to be traded
-
-You can integrate this widget into any page of your application where you want to offer token trading functionality.
-
-## Adding Support for Other Chains
-
-To extend this widget to support other blockchain networks, you'll need to implement chain detection logic in the BuyTabContent component. The transaction preview and execution are both handled in this component, making it the central place for adding multi-chain support.
-
-### Chain Detection Implementation
-
-The main change would be to include some logic to detect on witch chain the token is, so you can then adapt the `createBuyTransaction` function to use the correct chain id.
-
-### Update Transaction Preview Logic
-
-Modify the `estimateFees` function in BuyTabContent.tsx to use the detected chain:
+### 3. Execute Buy Transaction
 
 ```typescript
-const estimateFees = useCallback(
-  async (amount: string) => {
-    // ...
-    const chainId = detectTokenChain(tokenAddress);
-    
-    const transaction = await universalAccount.createBuyTransaction({
-      token: { chainId: chainId, address: tokenAddress },
-      amountInUSD: amount,
-    });
-    // ...
-  },
-  [universalAccount, tokenAddress]
+// app/components/widget/BuyTabContent.tsx
+const transaction = await universalAccount.createBuyTransaction({
+  token: { chainId: 143, address: tokenAddress }, // Monad chainId
+  amountInUSD: "10", // Buy $10 worth using unified balance
+});
+
+// Sign with connected wallet
+const signature = await walletClient.signMessage({
+  account: address,
+  message: { raw: transaction.rootHash },
+});
+
+// Send transaction
+const result = await universalAccount.sendTransaction(transaction, signature);
+console.log(
+  `TX: https://universalx.app/activity/details?id=${result.transactionId}`
 );
 ```
 
-### Update Transaction Execution Logic
-
-Similarly, update the `handleBuyToken` function to use the detected chain:
+### 4. Execute Sell Transaction
 
 ```typescript
-const handleBuyToken = async (amount: string) => {
-  // ...
-  const chainId = detectTokenChain(tokenAddress);
-  
-  const transaction = await universalAccount.createBuyTransaction({
-    token: { chainId: chainId, address: tokenAddress },
-    amountInUSD: amount,
-  });
-  // ...
-};
+// app/components/widget/SellTabContent.tsx
+const transaction = await universalAccount.createSellTransaction({
+  token: { chainId: 143, address: tokenAddress },
+  amount: "100", // Sell 100 tokens
+});
+
+const signature = await walletClient.signMessage({
+  account: address,
+  message: { raw: transaction.rootHash },
+});
+
+const result = await universalAccount.sendTransaction(transaction, signature);
 ```
 
-### 3. Extend Token API Services
+## Quick Start
 
-Create chain-specific API handlers for token data:
+### Prerequisites
 
-1. Create a new directory structure for multi-chain support:
-   ```
-   /app/api/token/[chain]/metadata/route.ts
-   /app/api/token/[chain]/price/route.ts
-   /app/api/token/[chain]/balance/route.ts
+- Node.js 18+
+- [Particle Network credentials](https://dashboard.particle.network) (Project ID, Client Key, App ID)
+- [Moralis API Key](https://moralis.io) (for token data)
+
+### Setup
+
+1. Clone and install:
+
+   ```bash
+   git clone https://github.com/soos3d/instant-trade-widget.git
+   cd ua-dex
+   yarn install
    ```
 
-2. Implement chain-specific API routes:
-   ```typescript
-   // Example for Ethereum token metadata
-   export async function GET(
-     request: NextRequest,
-     { params }: { params: { chain: string } }
-   ) {
-     const chain = params.chain;
-     const searchParams = request.nextUrl.searchParams;
-     const address = searchParams.get("address");
-     
-     if (chain === "ethereum") {
-       // Use Ethereum-specific API (e.g., Etherscan, Alchemy)
-       // ...
-     } else if (chain === "solana") {
-       // Existing Solana implementation
-       // ...
-     }
-     // ...
-   }
+2. Create `.env.local`:
+
+   ```env
+   NEXT_PUBLIC_PROJECT_ID=""
+   NEXT_PUBLIC_CLIENT_KEY=""
+   NEXT_PUBLIC_APP_ID=""
+   NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=""
+   MORALIS_API_KEY=""
    ```
+
+3. Run:
+
+   ```bash
+   yarn dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000)
+
+## APIs Used
+
+| API                                                                                                                | Purpose                                             |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| [Particle Universal Accounts SDK](https://developers.particle.network/universal-accounts/ua-reference/desktop/web) | Chain abstraction, unified balance, transactions    |
+| [Particle Connect](https://developers.particle.network/connect/connect)                                            | Wallet connection (MetaMask, WalletConnect, social) |
+| [Moralis EVM API](https://docs.moralis.io/web3-data-api/evm/reference)                                             | Token metadata, prices, trending tokens             |
+
+## Learn More
+
+- [Universal Accounts Overview](https://developers.particle.network/universal-accounts/cha/overview)
+- [UA SDK Reference](https://developers.particle.network/universal-accounts/ua-reference/desktop/web)
+- [Supported Chains](https://developers.particle.network/universal-accounts/cha/chains)
+
+## License
+
+MIT
